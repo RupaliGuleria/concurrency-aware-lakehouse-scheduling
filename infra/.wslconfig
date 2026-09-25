@@ -1,0 +1,13 @@
+# Copy this file to C:\Users\<you>\.wslconfig on the RYZEN BOX (not the laptop).
+# Then from an elevated PowerShell on that box: wsl --shutdown
+# followed by restarting Docker Desktop, so the new limits take effect.
+#
+# Ryzen 7 3700X = 8 cores / 16 threads, 32GB RAM total.
+# Without this file, WSL2 applies its own default caps and silently gives
+# Docker less RAM/CPU than the box actually has.
+
+[wsl2]
+memory=24GB
+processors=12
+swap=8GB
+localhostForwarding=true

@@ -1,0 +1,59 @@
+services:
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # web console
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15
+    container_name: metastore-db
+    environment:
+      POSTGRES_DB: metastore_db
+      POSTGRES_USER: ${METASTORE_DB_USER}
+      POSTGRES_PASSWORD: ${METASTORE_DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  hive-metastore:
+    image: bitsondatadev/hive-metastore:latest
+    container_name: hive-metastore
+    hostname: hive-metastore
+    ports:
+      - "9083:9083"   # thrift
+    environment:
+      METASTORE_DB_HOSTNAME: postgres
+      METASTORE_DB_PORT: 5432
+      METASTORE_TYPE: postgres
+    volumes:
+      - ./hive-metastore/metastore-site.xml:/opt/apache-hive-metastore-3.0.0-bin/conf/metastore-site.xml:ro
+      - ./hive-metastore/krb5.conf:/etc/krb5.conf:ro
+    depends_on:
+      - postgres
+      - minio
+    restart: unless-stopped
+
+  trino:
+    image: trinodb/trino:455
+    container_name: trino
+    ports:
+      - "8080:8080"   # web UI + client API
+    volumes:
+      - ./trino/catalog:/etc/trino/catalog
+      - ./trino/jvm.config:/etc/trino/jvm.config
+    depends_on:
+      - hive-metastore
+    restart: unless-stopped
+
+volumes:
+  minio_data:
+  postgres_data:

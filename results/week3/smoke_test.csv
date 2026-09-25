@@ -1,0 +1,5 @@
+run_id,query_id,query_class,condition,run_index,start_time,end_time,runtime_ms,rows_returned,cache_state,ingestion_rate,sla_tier,scan_scope_frozen,error
+tpch_point_lookup_smoke_test_1_1787415280,tpch_point_lookup,short,smoke_test,1,2026-08-22T16:14:39.008279+00:00,2026-08-22T16:14:40.134377+00:00,1126.08,1,unknown,smoke_test,none,True,
+tpch_orders_lineitem_join_smoke_test_1_1787415289,tpch_orders_lineitem_join,long,smoke_test,1,2026-08-22T16:14:47.153574+00:00,2026-08-22T16:14:49.418345+00:00,2264.76,1,unknown,smoke_test,none,True,
+tpch_orders_sum_smoke_test_1_1787415296,tpch_orders_sum,medium,smoke_test,1,2026-08-22T16:14:56.225916+00:00,2026-08-22T16:14:56.815417+00:00,589.49,1,unknown,smoke_test,none,True,
+tpch_orders_sum_smoke_test_2_1787415297,tpch_orders_sum,medium,smoke_test,2,2026-08-22T16:14:56.816620+00:00,2026-08-22T16:14:57.380515+00:00,563.88,1,unknown,smoke_test,none,True,

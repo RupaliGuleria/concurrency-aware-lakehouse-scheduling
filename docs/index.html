@@ -1,0 +1,872 @@
+<title>Checkpoint 1: Ingestion Latency</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    color-scheme: light;
+    --bg: #f3f4ef;
+    --surface: #ffffff;
+    --surface-2: #fcfcfa;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --ink-muted: #898781;
+    --hairline: #e1e0d9;
+    --axis: #c3c2b7;
+    --accent: #a8551e;
+    --accent-ink: #ffffff;
+    --accent-soft: #f1e4d8;
+    --accent-soft-border: #e2c7ac;
+    --good: #0ca30c;
+    --good-soft: #e3f4e3;
+    --warn: #b5790a;
+    --warn-soft: #faecce;
+    --series-blue: #2a78d6;
+    --series-orange: #eb6834;
+    --series-aqua: #1baf7a;
+    --series-yellow: #b8780a;
+    --shadow: 0 1px 2px rgba(11,11,11,0.04), 0 8px 24px -12px rgba(11,11,11,0.12);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme: dark;
+      --bg: #0d0d0d;
+      --surface: #17171a;
+      --surface-2: #1a1a19;
+      --ink: #ffffff;
+      --ink-2: #c3c2b7;
+      --ink-muted: #898781;
+      --hairline: #2c2c2a;
+      --axis: #3a3a37;
+      --accent: #e2884b;
+      --accent-ink: #12100c;
+      --accent-soft: rgba(226,136,75,0.14);
+      --accent-soft-border: rgba(226,136,75,0.35);
+      --good: #2fbf4f;
+      --good-soft: rgba(47,191,79,0.12);
+      --warn: #f0b93d;
+      --warn-soft: rgba(240,185,61,0.13);
+      --series-blue: #3987e5;
+      --series-orange: #d95926;
+      --series-aqua: #199e70;
+      --series-yellow: #d99a1c;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 28px -12px rgba(0,0,0,0.55);
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --bg: #0d0d0d;
+    --surface: #17171a;
+    --surface-2: #1a1a19;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --ink-muted: #898781;
+    --hairline: #2c2c2a;
+    --axis: #3a3a37;
+    --accent: #e2884b;
+    --accent-ink: #12100c;
+    --accent-soft: rgba(226,136,75,0.14);
+    --accent-soft-border: rgba(226,136,75,0.35);
+    --good: #2fbf4f;
+    --good-soft: rgba(47,191,79,0.12);
+    --warn: #f0b93d;
+    --warn-soft: rgba(240,185,61,0.13);
+    --series-blue: #3987e5;
+    --series-orange: #d95926;
+    --series-aqua: #199e70;
+    --series-yellow: #d99a1c;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 28px -12px rgba(0,0,0,0.55);
+  }
+
+  *{ box-sizing:border-box; }
+  html{ -webkit-text-size-adjust:100%; }
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    line-height:1.6;
+    font-size:16px;
+  }
+  ::selection{ background:var(--accent-soft); color:var(--ink); }
+  a{ color:var(--accent); }
+  a:focus-visible, button:focus-visible, summary:focus-visible{
+    outline:2px solid var(--accent); outline-offset:2px; border-radius:3px;
+  }
+
+  .mono{ font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, Consolas, monospace; }
+  .tabular{ font-variant-numeric: tabular-nums; }
+
+  .wrap{ max-width:920px; margin:0 auto; padding:0 24px; }
+  .prose{ max-width:680px; }
+
+  /* ---- nav ---- */
+  .nav{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(8px) saturate(140%);
+    border-bottom:1px solid var(--hairline);
+  }
+  .nav-inner{
+    max-width:920px; margin:0 auto; padding:0 24px;
+    display:flex; align-items:center; gap:22px;
+    height:48px; overflow-x:auto;
+  }
+  .nav-mark{ font-family:"IBM Plex Mono"; font-weight:600; font-size:0.8rem; color:var(--ink); white-space:nowrap; letter-spacing:0.02em; }
+  .nav-links{ display:flex; gap:18px; white-space:nowrap; }
+  .nav-links a{
+    font-family:"IBM Plex Mono"; font-size:0.72rem; letter-spacing:0.04em; text-transform:uppercase;
+    color:var(--ink-muted); text-decoration:none; padding:4px 0; border-bottom:2px solid transparent;
+  }
+  .nav-links a:hover{ color:var(--ink); border-bottom-color:var(--accent); }
+
+  /* ---- masthead ---- */
+  .masthead{ padding:56px 0 40px; border-bottom:1px solid var(--hairline); }
+  .eyebrow{
+    font-family:"IBM Plex Mono"; font-size:0.74rem; letter-spacing:0.09em; text-transform:uppercase;
+    color:var(--accent); font-weight:600; margin:0 0 14px;
+  }
+  h1{
+    font-family:"IBM Plex Mono"; font-weight:600; letter-spacing:-0.01em;
+    font-size:clamp(1.7rem, 4vw, 2.5rem); line-height:1.15; margin:0 0 16px; text-wrap:balance;
+  }
+  .dek{ font-size:1.08rem; color:var(--ink-2); max-width:640px; margin:0 0 22px; }
+  .meta-row{ display:flex; flex-wrap:wrap; gap:8px 10px; font-family:"IBM Plex Mono"; font-size:0.76rem; color:var(--ink-muted); }
+  .meta-chip{ padding:3px 9px; border:1px solid var(--hairline); border-radius:20px; }
+
+  section{ padding:52px 0; border-bottom:1px solid var(--hairline); }
+  section:last-of-type{ border-bottom:none; }
+  .section-head{ margin-bottom:28px; }
+  .section-num{ font-family:"IBM Plex Mono"; font-size:0.74rem; color:var(--ink-muted); letter-spacing:0.06em; }
+  h2{ font-family:"IBM Plex Mono"; font-size:1.4rem; font-weight:600; margin:6px 0 10px; text-wrap:balance; }
+  h2 .verb{ color:var(--accent); }
+  .section-sub{ color:var(--ink-2); max-width:640px; margin:0; }
+  h3{ font-family:"IBM Plex Sans"; font-size:1.02rem; font-weight:600; margin:0 0 8px; }
+  p{ margin:0 0 14px; }
+  .prose p:last-child{ margin-bottom:0; }
+
+  /* ---- stat tiles ---- */
+  .tldr-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--hairline); border:1px solid var(--hairline); border-radius:12px; overflow:hidden; }
+  .tile{ background:var(--surface); padding:22px 20px; display:flex; flex-direction:column; gap:8px; }
+  .tile-label{ font-family:"IBM Plex Mono"; font-size:0.7rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-muted); }
+  .tile-value{ font-family:"IBM Plex Mono"; font-weight:600; font-size:clamp(1.5rem,3vw,1.9rem); line-height:1.05; }
+  .tile-value .unit{ font-size:0.6em; color:var(--ink-2); font-weight:500; }
+  .tile-sub{ font-size:0.82rem; color:var(--ink-2); }
+  .badge{ display:inline-flex; align-items:center; gap:6px; font-family:"IBM Plex Mono"; font-size:0.72rem; font-weight:600; letter-spacing:0.03em; padding:4px 10px; border-radius:20px; width:fit-content; }
+  .badge.good{ background:var(--good-soft); color:var(--good); }
+  .badge.warn{ background:var(--warn-soft); color:var(--warn); }
+  .badge-dot{ width:6px; height:6px; border-radius:50%; background:currentColor; flex:none; }
+
+  @media (max-width:720px){ .tldr-grid{ grid-template-columns:1fr; } }
+
+  /* ---- callout ---- */
+  .callout{
+    border:1px solid var(--hairline); background:var(--surface-2); border-radius:10px;
+    padding:16px 18px; font-size:0.92rem; color:var(--ink-2); margin:20px 0 0;
+  }
+  .callout strong{ color:var(--ink); }
+  .callout.accent{ border-color:var(--accent-soft-border); background:var(--accent-soft); }
+
+  /* ---- query block ---- */
+  pre.query{
+    background:var(--surface-2); border:1px solid var(--hairline); border-radius:10px;
+    padding:16px 18px; overflow-x:auto; font-family:"IBM Plex Mono"; font-size:0.82rem; line-height:1.6;
+    color:var(--ink);
+  }
+  .env-list{ list-style:none; margin:16px 0 0; padding:0; display:grid; gap:9px; font-size:0.9rem; }
+  .env-list li{ display:grid; grid-template-columns:120px 1fr; gap:12px; color:var(--ink-2); }
+  .env-list li b{ color:var(--ink); font-weight:600; }
+
+  /* ---- charts ---- */
+  .chart-card{ border:1px solid var(--hairline); background:var(--surface); border-radius:12px; padding:22px 22px 14px; box-shadow:var(--shadow); }
+  .chart-title{ font-weight:600; font-size:0.98rem; margin:0 0 2px; }
+  .chart-caption{ font-size:0.82rem; color:var(--ink-muted); margin:0 0 6px; }
+  .chart-legend{ display:flex; flex-wrap:wrap; gap:14px; margin:14px 2px 4px; font-size:0.78rem; color:var(--ink-2); }
+  .legend-item{ display:flex; align-items:center; gap:6px; }
+  .legend-swatch{ width:10px; height:10px; border-radius:3px; flex:none; }
+  .legend-item.muted{ opacity:0.65; }
+  .chart-svg-wrap{ position:relative; }
+  .chart-tip{
+    position:absolute; pointer-events:none; z-index:5; opacity:0; transition:opacity 0.08s ease;
+    background:var(--ink); color:var(--bg); font-family:"IBM Plex Mono"; font-size:0.72rem;
+    padding:5px 8px; border-radius:6px; white-space:nowrap; transform:translate(-50%,-115%);
+  }
+  :root[data-theme="dark"] .chart-tip, :root:not([data-theme="light"]) .chart-tip{ }
+  .dot-hit{ cursor:pointer; }
+
+  /* ---- tables ---- */
+  .table-wrap{ overflow-x:auto; border:1px solid var(--hairline); border-radius:10px; }
+  table{ border-collapse:collapse; width:100%; font-size:0.86rem; min-width:560px; }
+  thead th{
+    text-align:left; font-family:"IBM Plex Mono"; font-size:0.7rem; letter-spacing:0.04em; text-transform:uppercase;
+    color:var(--ink-muted); font-weight:500; padding:10px 14px; border-bottom:1px solid var(--hairline);
+    background:var(--surface-2); position:sticky; top:0;
+  }
+  tbody td{ padding:9px 14px; border-bottom:1px solid var(--hairline); color:var(--ink-2); vertical-align:top; }
+  tbody tr:last-child td{ border-bottom:none; }
+  tbody tr:hover{ background:var(--surface-2); }
+  td.num, th.num{ text-align:right; font-family:"IBM Plex Mono"; }
+  td.strong{ color:var(--ink); font-weight:600; }
+  .row-chip{ display:inline-flex; align-items:center; gap:6px; }
+  .row-chip .sw{ width:8px; height:8px; border-radius:2px; flex:none; }
+
+  /* ---- findings list ---- */
+  .finding{ display:flex; gap:16px; padding:18px 0; border-top:1px solid var(--hairline); }
+  .finding:first-child{ border-top:none; padding-top:4px; }
+  .finding-mark{ flex:none; width:9px; height:9px; border-radius:50%; margin-top:7px; }
+  .finding h3{ margin-bottom:6px; }
+  .finding p{ color:var(--ink-2); font-size:0.94rem; }
+
+  /* ---- appendix / raw data ---- */
+  details.appendix{ border:1px solid var(--hairline); border-radius:12px; background:var(--surface); overflow:hidden; }
+  details.appendix[open]{ padding-bottom:4px; }
+  summary.appendix-summary{
+    cursor:pointer; list-style:none; padding:18px 22px; display:flex; align-items:center; justify-content:space-between;
+    font-family:"IBM Plex Mono"; font-weight:600; font-size:0.92rem;
+  }
+  summary.appendix-summary::-webkit-details-marker{ display:none; }
+  summary.appendix-summary .chev{ transition:transform 0.15s ease; color:var(--ink-muted); }
+  details[open] summary .chev{ transform:rotate(90deg); }
+  .appendix-body{ padding:0 22px 22px; }
+  .appendix-note{ font-size:0.84rem; color:var(--ink-muted); margin:0 0 14px; }
+
+  footer{ padding:36px 0 60px; }
+  footer p{ font-size:0.8rem; color:var(--ink-muted); margin:0; }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ transition:none !important; animation:none !important; }
+  }
+</style>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <span class="nav-mark">CKPT&nbsp;01</span>
+    <div class="nav-links">
+      <a href="#glossary">Glossary</a>
+      <a href="#tldr">TL;DR</a>
+      <a href="#method">Method</a>
+      <a href="#harness">Harness</a>
+      <a href="#volume">Data volume</a>
+      <a href="#concurrency">Concurrency</a>
+      <a href="#conclusion">Conclusion</a>
+      <a href="#raw">Raw data</a>
+    </div>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">Checkpoint 1 &middot; Week 2 go/no-go gate</p>
+    <h1>Does ingestion measurably affect&nbsp;query latency?</h1>
+    <p class="dek">Two mechanisms tested against the same Trino query, timed end-to-end: registering more ingested data into a scan, and a producer actively writing while a query runs. They behave differently — and carry different confidence.</p>
+    <div class="meta-row">
+      <span class="meta-chip">Ryzen box &middot; Trino / MinIO / Hive Metastore</span>
+      <span class="meta-chip">2026&#8209;08&#8209;19</span>
+      <span class="meta-chip">n&#8202;=&#8202;87 runs</span>
+      <span class="meta-chip">scripts/query_timing_harness.py</span>
+    </div>
+  </header>
+
+  <section id="glossary">
+    <div class="section-head">
+      <span class="section-num">01</span>
+      <h2>Metrics <span class="verb">glossary</span></h2>
+      <p class="section-sub">Read this first — every chart and table below is built from these six numbers, computed per condition from n repeated runs of the identical query.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th style="width:15%">Metric</th><th style="width:38%">Meaning</th><th>Why it matters here</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="strong mono">n</td>
+            <td>Number of times the query ran under that condition.</td>
+            <td>10&ndash;15 here — genuinely low for how noisy the box turned out to be (see stdev).</td>
+          </tr>
+          <tr>
+            <td class="strong mono">mean</td>
+            <td>Average runtime across the n runs.</td>
+            <td>Easiest to compare at a glance, but easily dragged around by a couple of slow outliers — this data has those.</td>
+          </tr>
+          <tr>
+            <td class="strong mono">median</td>
+            <td>The middle value once all n runs are sorted.</td>
+            <td>More robust to outliers than the mean. When mean and median diverge a lot (418ms vs 329ms for <span class="mono">no_burst_before</span>), that's itself a signal: a right-skewed distribution with occasional slow runs, not a uniform shift.</td>
+          </tr>
+          <tr>
+            <td class="strong mono">stdev</td>
+            <td>Standard deviation — how spread out the runs are around the mean.</td>
+            <td>The real story in this dataset. 150&ndash;180ms of spread on a ~350&ndash;500ms query means run-to-run noise is comparable in size to the effects being measured — this is why a permutation test was needed instead of just eyeballing the means.</td>
+          </tr>
+          <tr>
+            <td class="strong mono">min / max</td>
+            <td>Fastest and slowest single run in the block.</td>
+            <td>Shows the actual range, including outliers stdev only hints at. Several blocks have one run at 2&ndash;3x the others.</td>
+          </tr>
+          <tr>
+            <td class="strong mono">permutation&#8209;test p&#8209;value</td>
+            <td>Probability of seeing a difference this large purely by chance, if the condition actually had zero effect.</td>
+            <td>Computed by reshuffling timing values between two conditions 20,000 times. p&lt;0.05 is the conventional "probably not chance" bar. Here: p&#8202;&asymp;&#8202;0.09 (mean) and p&#8202;&asymp;&#8202;0.13 (median) for the concurrency effect — below that bar, so suggestive rather than proven.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="tldr">
+    <div class="section-head">
+      <span class="section-num">02</span>
+      <h2><span class="verb">Yes</span> — two mechanisms, two confidence levels</h2>
+      <p class="section-sub">Every number below comes from repeated runs of one fixed full&#8209;table&#8209;scan query — see the <a href="#glossary">glossary above</a> for what each one means.</p>
+    </div>
+
+    <div class="tldr-grid">
+      <div class="tile">
+        <span class="tile-label">Data volume effect</span>
+        <span class="tile-value tabular">364 <span class="unit">&rarr;</span> 553<span class="unit">ms mean</span></span>
+        <span class="tile-sub">More registered scan scope roughly <b style="color:var(--ink)">doubles</b> latency.</span>
+        <span class="badge good"><span class="badge-dot"></span>proven, unconfounded</span>
+      </div>
+      <div class="tile">
+        <span class="tile-label">Concurrent-write effect</span>
+        <span class="tile-value tabular">+73<span class="unit">ms mean</span></span>
+        <span class="tile-sub">On a ~330&ndash;420ms baseline, while burst files stay invisible to the query.</span>
+        <span class="badge warn"><span class="badge-dot"></span>suggestive &middot; p&#8202;&asymp;&#8202;0.09</span>
+      </div>
+      <div class="tile">
+        <span class="tile-label">Checkpoint verdict</span>
+        <span class="tile-value">Conditional go</span>
+        <span class="tile-sub">Proceed to Week 3 — keep the two mechanisms as separate signals, not one blended "ingestion load" variable.</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="method">
+    <div class="section-head">
+      <span class="section-num">03</span>
+      <h2>What was <span class="verb">tested</span></h2>
+      <p class="section-sub">One fixed query, repeated many times, timed submit&#8209;to&#8209;fetch&#8209;complete, against Trino on the Ryzen box (<span class="mono">YOUR_TRINO_HOST</span>), queried over Tailscale.</p>
+    </div>
+    <pre class="query">SELECT
+    count(*) AS n_orders,
+    sum(CAST(json_extract_scalar(payload_json, '$.o_totalprice') AS DOUBLE)) AS total_price
+FROM hive.events.raw_events
+WHERE schema_id = 'tpch_orders_v1'</pre>
+    <ul class="env-list">
+      <li><b>Table shape</b> Hive-partitioned external table (<span class="mono">year/month/day/hour/source</span>) over Parquet in the <span class="mono">lakehouse-events</span> MinIO bucket.</li>
+      <li><b>Why it's slow</b> No partition filter — <span class="mono">schema_id</span> is a row-level predicate, so every registered partition's files get opened regardless of which dataset the query wants.</li>
+      <li><b>Ingestion load</b> Local Kafka + Java ingestion service (<span class="mono">adaptive-data-lake-producer</span>, <span class="mono">pipeline_tpch</span> branch) writing to the same Ryzen-box MinIO.</li>
+      <li><b>Isolation</b> No other observable load on either machine during testing.</li>
+    </ul>
+    <div class="callout">Two questions needed different experimental designs to isolate cleanly: <b>(1)</b> does registering more ingested data slow the scan, regardless of active writing? <b>(2)</b> does an actively-writing producer contend for shared resources even when its new files aren't yet visible to the query? The first attempt at (2) was confounded — see the note below the data&#8209;volume chart.</div>
+  </section>
+
+  <section id="harness">
+    <div class="section-head">
+      <span class="section-num">04</span>
+      <h2>The <span class="verb">harness</span></h2>
+      <p class="section-sub">Every row in the timing data comes from one script: <span class="mono">scripts/query_timing_harness.py</span>. It is deliberately a dumb stopwatch loop — the experimental design (ABA blocking, frozen scan scope, when to trigger the burst) lives in how it's invoked, not in the script itself.</p>
+    </div>
+    <ul class="env-list">
+      <li><b>Fixed query</b> Runs the exact same SQL every time via Trino's Python client — only the <span class="mono">--condition</span> label changes between invocations, so timing differences can't be attributed to a different query.</li>
+      <li><b>Precise timing</b> Wraps <span class="mono">execute()</span> + <span class="mono">fetchall()</span> in <span class="mono">time.perf_counter()</span>, recording wall-clock start/end plus elapsed <span class="mono">runtime_ms</span>. A failed run is caught and logged with its error text rather than crashing the batch.</li>
+      <li><b>Condition tagging</b> <span class="mono">--condition</span> is a free-text label supplied by the caller (<span class="mono">none</span>, <span class="mono">heavy_burst</span>, …) — the harness doesn't infer it, so correctness depends on running it at the right moment relative to the ingestion producer.</li>
+      <li><b>Durable, incremental output</b> Appends to <span class="mono">results/checkpoint1_timing.csv</span> and <span class="mono">flush()</span>es after every row, so a mid-run crash never loses already-completed timings.</li>
+      <li><b>Paced runs</b> A configurable <span class="mono">--sleep</span> gap (default 1s) between queries, each row keyed by a unique <span class="mono">run_id</span>.</li>
+    </ul>
+    <details class="appendix" style="margin-top:22px;">
+      <summary class="appendix-summary"><span>View harness source — query_timing_harness.py</span><span class="chev">&#9656;</span></summary>
+      <div class="appendix-body">
+        <pre class="query harness-code" id="harnessCode" style="max-height:420px; overflow-y:auto;"></pre>
+      </div>
+    </details>
+  </section>
+
+  <section id="volume">
+    <div class="section-head">
+      <span class="section-num">05</span>
+      <h2>Question 1 &mdash; <span class="verb">data volume</span> in the scan path</h2>
+      <p class="section-sub">Four conditions, run chronologically. <span class="mono" style="color:var(--ink)">none</span> vs <span class="mono" style="color:var(--ink)">sync_only_no_burst</span> is the clean, unconfounded comparison — same producer state, only the registered scan scope differs.</p>
+    </div>
+
+    <div class="chart-card">
+      <p class="chart-title">Runtime per run, by condition</p>
+      <p class="chart-caption">First pass &middot; n=10 per condition &middot; jittered dots, diamond = mean, tick = median</p>
+      <div class="chart-svg-wrap" id="chartVolume"></div>
+      <div class="chart-legend">
+        <span class="legend-item"><span class="legend-swatch" style="background:var(--series-blue)"></span>none — clean baseline</span>
+        <span class="legend-item"><span class="legend-swatch" style="background:var(--series-orange)"></span>sync_only_no_burst — scope grown</span>
+        <span class="legend-item muted"><span class="legend-swatch" style="background:var(--series-aqua)"></span>heavy_burst — confounded, for record</span>
+        <span class="legend-item muted"><span class="legend-swatch" style="background:var(--series-yellow)"></span>heavy_burst_synced — confounded, for record</span>
+      </div>
+    </div>
+
+    <div class="callout accent">
+      <strong>Why two of these are muted:</strong> <span class="mono">sync_only_no_burst</span> ran before <span class="mono">heavy_burst_synced</span> in wall-clock time, and each condition changed the registered scan scope — so the drop from 553.5ms to 439.1ms between them isn't evidence concurrent writing is <em>faster</em> than static data. It's confounded by growing scope plus warmer caches on the second scan. Question 1's clean answer comes from <span class="mono">none</span> vs <span class="mono">sync_only_no_burst</span> alone; question 2 needed the corrected design below.
+    </div>
+
+    <div class="table-wrap" style="margin-top:22px;">
+      <table>
+        <thead><tr>
+          <th>Condition</th><th class="num">n</th><th class="num">mean</th><th class="num">median</th><th class="num">stdev</th><th class="num">min</th><th class="num">max</th>
+        </tr></thead>
+        <tbody id="tblVolume"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="concurrency">
+    <div class="section-head">
+      <span class="section-num">06</span>
+      <h2>Question 2 &mdash; <span class="verb">concurrent writing</span>, isolated</h2>
+      <p class="section-sub">Corrected before/during/after (ABA) design: scan scope frozen across all three blocks — no <span class="mono">sync_partition_metadata</span> calls — so a concurrent burst's new files land in an unregistered partition, invisible to the query. This isolates physical resource contention from the data&#8209;volume effect above.</p>
+    </div>
+
+    <div class="chart-card">
+      <p class="chart-title">Runtime per run, before &rarr; during &rarr; after the burst</p>
+      <p class="chart-caption">n=15 per block &middot; banking_transaction_v1 burst, ~550k rows over ~100s &middot; same color reused for before/after — it's the same condition, not a new one</p>
+      <div class="chart-svg-wrap" id="chartAba"></div>
+      <div class="chart-legend">
+        <span class="legend-item"><span class="legend-swatch" style="background:var(--series-blue)"></span>no burst (before / after)</span>
+        <span class="legend-item"><span class="legend-swatch" style="background:var(--series-orange)"></span>burst during</span>
+      </div>
+    </div>
+
+    <div class="table-wrap" style="margin-top:22px;">
+      <table>
+        <thead><tr>
+          <th>Block</th><th>Window (UTC)</th><th class="num">n</th><th class="num">mean</th><th class="num">median</th><th class="num">stdev</th><th class="num">min</th><th class="num">max</th>
+        </tr></thead>
+        <tbody id="tblAba"></tbody>
+      </table>
+    </div>
+
+    <div class="callout" style="margin-top:22px;">
+      <strong>Before &asymp; after:</strong> mean 418.2ms vs 412.0ms, median 328.9ms vs 330.1ms — despite being ~4 minutes apart, so time-drift and caching aren't a major confound here. <strong>Burst_during sits above both:</strong> +72.9ms mean (p&#8202;&asymp;&#8202;0.088), +79.9ms median (p&#8202;&asymp;&#8202;0.127) vs the pooled no-burst blocks, one-sided permutation test at 20,000 resamples. Below the conventional p&lt;0.05 bar — directionally real, not yet citable as proven.
+    </div>
+  </section>
+
+  <section id="conclusion">
+    <div class="section-head">
+      <span class="section-num">07</span>
+      <h2>Interpretation &amp; <span class="verb">conclusion</span></h2>
+    </div>
+
+    <div class="finding">
+      <span class="finding-mark" style="background:var(--good)"></span>
+      <div>
+        <h3>Data-volume effect: proven.</h3>
+        <p>Registering more ingested data into the scan path roughly doubled mean latency (364ms &rarr; 553ms) and tripled the spread, in the very first, unconfounded comparison. No caveats needed — solid enough to build on.</p>
+      </div>
+    </div>
+    <div class="finding">
+      <span class="finding-mark" style="background:var(--warn)"></span>
+      <div>
+        <h3>Concurrent-write contention: plausible, not yet proven.</h3>
+        <p>burst_during sits above both flanking baselines, with internal consistency confirmed by before&asymp;after — but it isn't yet statistically conclusive at n=15 per block. The effect (~70&ndash;80ms on a ~330&ndash;420ms median) is real enough to keep pursuing, not strong enough to claim as settled from one ABA pass.</p>
+      </div>
+    </div>
+    <div class="finding">
+      <span class="finding-mark" style="background:var(--ink-muted)"></span>
+      <div>
+        <h3>Variance is the dominant challenge, not the mean.</h3>
+        <p>Every block, including totally quiescent ones, has occasional 2x outliers. Week 3+ experiment design needs enough repetitions — and probably p95/p99 reporting, not just mean/median — to separate real tail effects from this baseline noise floor.</p>
+      </div>
+    </div>
+
+    <div class="callout accent" style="margin-top:8px;">
+      <strong>Verdict: conditional go.</strong> It's justified to proceed to Week 3 (query classes, SLA rules, baselines, the prediction dataset) — the premise that ingestion affects performance is supported, not in doubt. Two things carry forward as requirements for the Week 3+ harness, not loose ends: more repetitions per condition (ideally a rate-limited/steady-state producer instead of one-shot CSV replay, so concurrent-write windows can support a properly randomized design) before the concurrency effect is citable as confirmed; and keeping data-volume growth and concurrent-write contention as separate signals — a ~190ms shift vs a ~75ms shift, mechanistically different effect sizes that a blended "ingestion load" variable would erase.
+    </div>
+  </section>
+
+  <section id="raw" style="border-bottom:none; padding-bottom:40px;">
+    <div class="section-head">
+      <span class="section-num">08</span>
+      <h2>Raw <span class="verb">timing data</span></h2>
+      <p class="section-sub">All 87 runs from <span class="mono">results/checkpoint1_timing.csv</span>. Columns constant across every row — <span class="mono">cache_state</span> (always warm), <span class="mono">rows_returned</span> (always 1) and <span class="mono">error</span> (always empty) — are omitted below; nothing failed and every run hit a warm cache.</p>
+    </div>
+    <details class="appendix" id="rawDetails">
+      <summary class="appendix-summary"><span>Expand all 87 runs</span><span class="chev">&#9656;</span></summary>
+      <div class="appendix-body">
+        <p class="appendix-note">Grouped by condition in the order they ran. Times are UTC, trimmed to time-of-day.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Condition</th><th>Start (UTC)</th><th class="num">Runtime</th></tr></thead>
+            <tbody id="tblRaw"></tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <footer>
+    <p>Source: <span class="mono">results/checkpoint1_findings.md</span> &amp; <span class="mono">results/checkpoint1_timing.csv</span>. Harness: <span class="mono">scripts/query_timing_harness.py</span>.</p>
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var SVGNS = "http://www.w3.org/2000/svg";
+  function el(tag, attrs){
+    var e = document.createElementNS(SVGNS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  function stat(values){
+    var n = values.length;
+    var mean = values.reduce(function(a,b){return a+b;},0)/n;
+    var sorted = values.slice().sort(function(a,b){return a-b;});
+    var mid = Math.floor(n/2);
+    var median = n%2 ? sorted[mid] : (sorted[mid-1]+sorted[mid])/2;
+    var variance = values.reduce(function(a,b){return a+Math.pow(b-mean,2);},0)/(n-1);
+    var stdev = Math.sqrt(variance);
+    return { n:n, mean:mean, median:median, stdev:stdev, min:Math.min.apply(null,values), max:Math.max.apply(null,values) };
+  }
+  function fmt(v){ return v.toFixed(1); }
+
+  function seeded(i){ var x = Math.sin(i*12.9898)*43758.5453; return x - Math.floor(x); }
+
+  // ---------------- data ----------------
+  var raw = {
+    none: [518.01,357.31,367.39,343.15,331.68,346.81,347.56,338.25,352.15,338.17],
+    heavy_burst: [364.69,329.37,326.79,310.97,328.39,323.6,316.43,350.13,307.3,322.22],
+    sync_only_no_burst: [561.77,481.32,604.08,482.55,890.02,736.53,420.6,629.09,296.32,432.74],
+    heavy_burst_synced: [635.87,462.56,300.31,310.01,549.09,299.27,340.92,470.3,324.7,697.81],
+    no_burst_before: [593.53,431.35,320.8,295.98,694.31,293.67,312.02,328.92,892.97,300.16,524.36,312.38,330.94,303.86,337.87],
+    burst_during: [769.7,703.46,709.73,307.37,405.66,409.38,276.12,355.26,395.64,309.29,487.44,724.95,699.56,324.43,441.71],
+    no_burst_after: [456.75,330.14,608.78,320.65,327.79,368.1,362.05,300.44,612.96,314.96,582.83,687.73,315.81,299.41,291.33]
+  };
+  var abaWindows = {
+    no_burst_before: "13:42:17 – 13:42:28",
+    burst_during: "13:43:13 – 13:43:25",
+    no_burst_after: "13:46:15 – 13:46:25"
+  };
+
+  // ---------------- strip plot ----------------
+  function renderStrip(containerId, groups){
+    var container = document.getElementById(containerId);
+    container.innerHTML = "";
+    var tipDiv = document.createElement("div");
+    tipDiv.className = "chart-tip mono";
+    container.appendChild(tipDiv);
+    var svgHolder = document.createElement("div");
+    container.appendChild(svgHolder);
+    stripPlotInto(svgHolder, tipDiv, groups);
+  }
+
+  function stripPlotInto(svgHolder, tip, groups){
+    var width = 800, rowH = 54, padTop = 12, padBottom = 34, labelW = 190, padRight = 18;
+    var height = groups.length*rowH + padTop + padBottom;
+    var allVals = [].concat.apply([], groups.map(function(g){return g.values;}));
+    var dMin = Math.max(0, Math.floor(Math.min.apply(null,allVals)/50)*50 - 40);
+    var dMax = Math.ceil(Math.max.apply(null,allVals)/50)*50 + 40;
+    var plotL = labelW, plotR = width - padRight;
+    function x(v){ return plotL + (v-dMin)/(dMax-dMin)*(plotR-plotL); }
+
+    var svg = el("svg", {viewBox:"0 0 "+width+" "+height, width:"100%", height:height, role:"img",
+      "aria-label":"Strip plot of query runtime in milliseconds across conditions"});
+    svg.style.display = "block";
+    svg.style.overflow = "visible";
+
+    var step = (dMax-dMin) > 900 ? 200 : 100;
+    for (var gv = Math.ceil(dMin/step)*step; gv <= dMax; gv += step){
+      var gx = x(gv);
+      svg.appendChild(el("line", {x1:gx,y1:padTop-2,x2:gx,y2:height-padBottom+4, stroke:"var(--hairline)", "stroke-width":1}));
+      var gt = el("text", {x:gx, y:height-padBottom+18, "text-anchor":"middle", fill:"var(--ink-muted)", "font-size":"10.5", "font-family":"IBM Plex Mono, monospace"});
+      gt.textContent = gv + "ms";
+      svg.appendChild(gt);
+    }
+    svg.appendChild(el("line", {x1:plotL,y1:height-padBottom,x2:plotR,y2:height-padBottom, stroke:"var(--axis)", "stroke-width":1}));
+
+    groups.forEach(function(g, gi){
+      var cy0 = padTop + gi*rowH;
+      var cyMid = cy0 + rowH/2;
+      var color = "var(--series-"+g.color+")";
+      var opacity = g.muted ? 0.55 : 1;
+
+      var label = el("text", {x:0, y:cyMid-4, fill:g.muted?"var(--ink-muted)":"var(--ink)", "font-size":"12", "font-weight": g.muted?"400":"600", "font-family":"IBM Plex Sans, sans-serif"});
+      label.textContent = g.label;
+      svg.appendChild(label);
+      var subLabel = el("text", {x:0, y:cyMid+12, fill:"var(--ink-muted)", "font-size":"10.5", "font-family":"IBM Plex Mono, monospace"});
+      subLabel.textContent = "n=" + g.values.length + (g.muted ? "  · confounded" : "");
+      svg.appendChild(subLabel);
+
+      if (gi>0){
+        svg.appendChild(el("line", {x1:0,y1:cy0,x2:width,y2:cy0, stroke:"var(--hairline)", "stroke-width":1}));
+      }
+
+      var s = stat(g.values);
+      var medX = x(s.median);
+      svg.appendChild(el("line", {x1:medX,y1:cy0+8,x2:medX,y2:cy0+rowH-8, stroke:color, "stroke-width":2, opacity:opacity*0.9}));
+
+      var meanX = x(s.mean);
+      var d = 5;
+      var diamond = el("path", {
+        d: "M "+meanX+" "+(cyMid-d)+" L "+(meanX+d)+" "+cyMid+" L "+meanX+" "+(cyMid+d)+" L "+(meanX-d)+" "+cyMid+" Z",
+        fill:"var(--surface)", stroke:color, "stroke-width":2, opacity:opacity
+      });
+      svg.appendChild(diamond);
+
+      g.values.forEach(function(v, i){
+        var jitter = (seeded(gi*100+i) - 0.5) * (rowH*0.62);
+        var cy = cyMid + jitter;
+        var cx = x(v);
+        var dot = el("circle", {cx:cx, cy:cy, r:3.4, fill:color, opacity:opacity, stroke:"var(--surface)", "stroke-width":1});
+        var hit = el("circle", {cx:cx, cy:cy, r:9, fill:"transparent", "class":"dot-hit"});
+        svg.appendChild(dot);
+        svg.appendChild(hit);
+        hit.addEventListener("mouseenter", function(){
+          tip.textContent = v.toFixed(1) + "ms  ·  run " + (i+1);
+          tip.style.left = cx + "px";
+          tip.style.top = cy + "px";
+          tip.style.opacity = 1;
+        });
+        hit.addEventListener("mouseleave", function(){ tip.style.opacity = 0; });
+      });
+    });
+
+    svgHolder.appendChild(svg);
+  }
+
+  renderStrip("chartVolume", [
+    { key:"none", label:"none", color:"blue", values: raw.none, muted:false },
+    { key:"heavy_burst", label:"heavy_burst", color:"aqua", values: raw.heavy_burst, muted:true },
+    { key:"sync_only_no_burst", label:"sync_only_no_burst", color:"orange", values: raw.sync_only_no_burst, muted:false },
+    { key:"heavy_burst_synced", label:"heavy_burst_synced", color:"yellow", values: raw.heavy_burst_synced, muted:true }
+  ]);
+
+  renderStrip("chartAba", [
+    { key:"no_burst_before", label:"no_burst_before", color:"blue", values: raw.no_burst_before, muted:false },
+    { key:"burst_during", label:"burst_during", color:"orange", values: raw.burst_during, muted:false },
+    { key:"no_burst_after", label:"no_burst_after", color:"blue", values: raw.no_burst_after, muted:false }
+  ]);
+
+  // ---------------- summary tables ----------------
+  function fillStatsTable(tbodyId, rows){
+    var tbody = document.getElementById(tbodyId);
+    tbody.innerHTML = rows.map(function(r){
+      var s = stat(raw[r.key]);
+      var chip = '<span class="row-chip"><span class="sw" style="background:var(--series-'+r.color+')"></span>'+r.label+'</span>';
+      var windowCell = r.window ? '<td class="mono">'+r.window+'</td>' : "";
+      return "<tr><td class='strong'>"+chip+"</td>"+windowCell+
+        "<td class='num'>"+s.n+"</td>"+
+        "<td class='num strong'>"+fmt(s.mean)+"ms</td>"+
+        "<td class='num'>"+fmt(s.median)+"ms</td>"+
+        "<td class='num'>"+fmt(s.stdev)+"</td>"+
+        "<td class='num'>"+fmt(s.min)+"</td>"+
+        "<td class='num'>"+fmt(s.max)+"</td></tr>";
+    }).join("");
+  }
+
+  fillStatsTable("tblVolume", [
+    {key:"none", label:"none", color:"blue"},
+    {key:"heavy_burst", label:"heavy_burst", color:"aqua"},
+    {key:"sync_only_no_burst", label:"sync_only_no_burst", color:"orange"},
+    {key:"heavy_burst_synced", label:"heavy_burst_synced", color:"yellow"}
+  ]);
+
+  fillStatsTable("tblAba", [
+    {key:"no_burst_before", label:"no_burst_before", color:"blue", window: abaWindows.no_burst_before},
+    {key:"burst_during", label:"burst_during", color:"orange", window: abaWindows.burst_during},
+    {key:"no_burst_after", label:"no_burst_after", color:"blue", window: abaWindows.no_burst_after}
+  ]);
+
+  // ---------------- raw data appendix ----------------
+  var rawRows = [
+    ["none","2026-08-19T10:55:57.842239+00:00",518.01],["none","2026-08-19T10:55:59.365954+00:00",357.31],
+    ["none","2026-08-19T10:56:00.723935+00:00",367.39],["none","2026-08-19T10:56:02.092233+00:00",343.15],
+    ["none","2026-08-19T10:56:03.436264+00:00",331.68],["none","2026-08-19T10:56:04.769725+00:00",346.81],
+    ["none","2026-08-19T10:56:06.117347+00:00",347.56],["none","2026-08-19T10:56:07.465521+00:00",338.25],
+    ["none","2026-08-19T10:56:08.805634+00:00",352.15],["none","2026-08-19T10:56:10.158249+00:00",338.17],
+    ["heavy_burst","2026-08-19T11:04:16.372485+00:00",364.69],["heavy_burst","2026-08-19T11:04:17.881321+00:00",329.37],
+    ["heavy_burst","2026-08-19T11:04:19.211329+00:00",326.79],["heavy_burst","2026-08-19T11:04:20.538460+00:00",310.97],
+    ["heavy_burst","2026-08-19T11:04:21.849945+00:00",328.39],["heavy_burst","2026-08-19T11:04:23.178713+00:00",323.6],
+    ["heavy_burst","2026-08-19T11:04:24.502637+00:00",316.43],["heavy_burst","2026-08-19T11:04:25.819644+00:00",350.13],
+    ["heavy_burst","2026-08-19T11:04:27.170238+00:00",307.3],["heavy_burst","2026-08-19T11:04:28.477974+00:00",322.22],
+    ["sync_only_no_burst","2026-08-19T13:17:44.347746+00:00",561.77],["sync_only_no_burst","2026-08-19T13:17:46.006723+00:00",481.32],
+    ["sync_only_no_burst","2026-08-19T13:17:47.488783+00:00",604.08],["sync_only_no_burst","2026-08-19T13:17:49.093654+00:00",482.55],
+    ["sync_only_no_burst","2026-08-19T13:17:50.576857+00:00",890.02],["sync_only_no_burst","2026-08-19T13:17:52.467798+00:00",736.53],
+    ["sync_only_no_burst","2026-08-19T13:17:54.204902+00:00",420.6],["sync_only_no_burst","2026-08-19T13:17:55.626603+00:00",629.09],
+    ["sync_only_no_burst","2026-08-19T13:17:57.256783+00:00",296.32],["sync_only_no_burst","2026-08-19T13:17:58.553730+00:00",432.74],
+    ["heavy_burst_synced","2026-08-19T13:19:12.686987+00:00",635.87],["heavy_burst_synced","2026-08-19T13:19:14.323994+00:00",462.56],
+    ["heavy_burst_synced","2026-08-19T13:19:15.787267+00:00",300.31],["heavy_burst_synced","2026-08-19T13:19:17.088006+00:00",310.01],
+    ["heavy_burst_synced","2026-08-19T13:19:18.398867+00:00",549.09],["heavy_burst_synced","2026-08-19T13:19:19.949005+00:00",299.27],
+    ["heavy_burst_synced","2026-08-19T13:19:21.248745+00:00",340.92],["heavy_burst_synced","2026-08-19T13:19:22.590511+00:00",470.3],
+    ["heavy_burst_synced","2026-08-19T13:19:24.061650+00:00",324.7],["heavy_burst_synced","2026-08-19T13:19:25.386926+00:00",697.81],
+    ["no_burst_before","2026-08-19T13:42:17.450999+00:00",593.53],["no_burst_before","2026-08-19T13:42:18.442175+00:00",431.35],
+    ["no_burst_before","2026-08-19T13:42:19.173980+00:00",320.8],["no_burst_before","2026-08-19T13:42:19.795633+00:00",295.98],
+    ["no_burst_before","2026-08-19T13:42:20.392770+00:00",694.31],["no_burst_before","2026-08-19T13:42:21.387502+00:00",293.67],
+    ["no_burst_before","2026-08-19T13:42:21.982289+00:00",312.02],["no_burst_before","2026-08-19T13:42:22.595216+00:00",328.92],
+    ["no_burst_before","2026-08-19T13:42:23.224864+00:00",892.97],["no_burst_before","2026-08-19T13:42:24.418771+00:00",300.16],
+    ["no_burst_before","2026-08-19T13:42:25.019431+00:00",524.36],["no_burst_before","2026-08-19T13:42:25.844511+00:00",312.38],
+    ["no_burst_before","2026-08-19T13:42:26.457812+00:00",330.94],["no_burst_before","2026-08-19T13:42:27.089872+00:00",303.86],
+    ["no_burst_before","2026-08-19T13:42:27.694645+00:00",337.87],
+    ["burst_during","2026-08-19T13:43:13.918854+00:00",769.7],["burst_during","2026-08-19T13:43:14.989952+00:00",703.46],
+    ["burst_during","2026-08-19T13:43:15.995082+00:00",709.73],["burst_during","2026-08-19T13:43:17.005710+00:00",307.37],
+    ["burst_during","2026-08-19T13:43:17.614175+00:00",405.66],["burst_during","2026-08-19T13:43:18.320857+00:00",409.38],
+    ["burst_during","2026-08-19T13:43:19.030979+00:00",276.12],["burst_during","2026-08-19T13:43:19.607824+00:00",355.26],
+    ["burst_during","2026-08-19T13:43:20.263815+00:00",395.64],["burst_during","2026-08-19T13:43:20.960557+00:00",309.29],
+    ["burst_during","2026-08-19T13:43:21.571104+00:00",487.44],["burst_during","2026-08-19T13:43:22.359411+00:00",724.95],
+    ["burst_during","2026-08-19T13:43:23.384800+00:00",699.56],["burst_during","2026-08-19T13:43:24.384707+00:00",324.43],
+    ["burst_during","2026-08-19T13:43:25.009690+00:00",441.71],
+    ["no_burst_after","2026-08-19T13:46:15.115603+00:00",456.75],["no_burst_after","2026-08-19T13:46:15.997317+00:00",330.14],
+    ["no_burst_after","2026-08-19T13:46:16.627765+00:00",608.78],["no_burst_after","2026-08-19T13:46:17.537221+00:00",320.65],
+    ["no_burst_after","2026-08-19T13:46:18.159734+00:00",327.79],["no_burst_after","2026-08-19T13:46:18.787983+00:00",368.1],
+    ["no_burst_after","2026-08-19T13:46:19.456906+00:00",362.05],["no_burst_after","2026-08-19T13:46:20.119757+00:00",300.44],
+    ["no_burst_after","2026-08-19T13:46:20.720848+00:00",612.96],["no_burst_after","2026-08-19T13:46:21.634739+00:00",314.96],
+    ["no_burst_after","2026-08-19T13:46:22.250468+00:00",582.83],["no_burst_after","2026-08-19T13:46:23.133844+00:00",687.73],
+    ["no_burst_after","2026-08-19T13:46:24.122422+00:00",315.81],["no_burst_after","2026-08-19T13:46:24.738736+00:00",299.41],
+    ["no_burst_after","2026-08-19T13:46:25.338814+00:00",291.33]
+  ];
+  var colorByCond = { none:"blue", heavy_burst:"aqua", sync_only_no_burst:"orange", heavy_burst_synced:"yellow",
+    no_burst_before:"blue", burst_during:"orange", no_burst_after:"blue" };
+
+  var tblRaw = document.getElementById("tblRaw");
+  tblRaw.innerHTML = rawRows.map(function(r, i){
+    var cond = r[0], iso = r[1], ms = r[2];
+    var time = iso.split("T")[1].replace("+00:00","");
+    var color = colorByCond[cond];
+    return "<tr><td class='num mono'>"+(i+1)+"</td>"+
+      "<td><span class='row-chip'><span class='sw' style='background:var(--series-"+color+")'></span><span class='mono'>"+cond+"</span></span></td>"+
+      "<td class='mono'>"+time+"</td>"+
+      "<td class='num mono strong'>"+ms.toFixed(2)+"ms</td></tr>";
+  }).join("");
+
+  // ---------------- harness source ----------------
+  document.getElementById("harnessCode").textContent = `"""Checkpoint-1 harness: run one fixed query N times against Trino on the
+Ryzen box and log per-run timing to CSV.
+
+Used two ways:
+  1. Smoke test — same query, 10x, everything else held constant. Establishes
+     the natural runtime noise floor before any factor comparison means
+     anything (see research-plan/scheduler_scope_and_infra_notes.md).
+  2. Checkpoint 1 — run once with --condition none (nothing else running),
+     then again with --condition heavy_burst while a producer profile is
+     ingesting (\`ingestion-pipeline/run-producers.ps1\`). Compare runtime_ms
+     between the two condition labels in the output CSV.
+
+--cache-state and --ingestion-rate are manually-attested labels for now
+(no automated telemetry yet — that's a later task); they exist so the CSV
+schema doesn't need to change when automated collection is added.
+
+Usage:
+  .venv/Scripts/python.exe query_timing_harness.py --condition none --runs 10
+  .venv/Scripts/python.exe query_timing_harness.py --condition heavy_burst --runs 10 --ingestion-rate heavy_burst
+"""
+from __future__ import annotations
+
+import argparse
+import csv
+import os
+import time
+from datetime import datetime, timezone
+
+import trino
+
+HOST = "YOUR_TRINO_HOST"
+PORT = 8080
+USER = "lakehouse-scheduler-research"
+CATALOG = "hive"
+
+QUERIES = {
+    "tpch_orders_sum": """
+        SELECT
+            count(*) AS n_orders,
+            sum(CAST(json_extract_scalar(payload_json, '$.o_totalprice') AS DOUBLE)) AS total_price
+        FROM hive.events.raw_events
+        WHERE schema_id = 'tpch_orders_v1'
+    """,
+}
+
+CSV_FIELDS = [
+    "run_id",
+    "query_id",
+    "condition",
+    "run_index",
+    "start_time",
+    "end_time",
+    "runtime_ms",
+    "rows_returned",
+    "cache_state",
+    "ingestion_rate",
+    "error",
+]
+
+
+def run_once(conn, query_id: str) -> dict:
+    start = datetime.now(timezone.utc)
+    t0 = time.perf_counter()
+    error = ""
+    rows_returned = 0
+    try:
+        cur = conn.cursor()
+        cur.execute(QUERIES[query_id])
+        rows = cur.fetchall()
+        rows_returned = len(rows)
+    except Exception as exc:  # noqa: BLE001 - want any failure captured in the CSV, not a crash
+        error = str(exc)
+    runtime_ms = (time.perf_counter() - t0) * 1000
+    end = datetime.now(timezone.utc)
+    return {
+        "start_time": start.isoformat(),
+        "end_time": end.isoformat(),
+        "runtime_ms": round(runtime_ms, 2),
+        "rows_returned": rows_returned,
+        "error": error,
+    }
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--condition", required=True, help="Free-text label, e.g. none, heavy_burst")
+    parser.add_argument("--runs", type=int, default=10)
+    parser.add_argument("--query-id", default="tpch_orders_sum", choices=list(QUERIES))
+    parser.add_argument("--cache-state", default="unknown", help="Manually-attested for now: warm/cold/unknown")
+    parser.add_argument("--ingestion-rate", default="", help="Manually-attested for now, e.g. none/heavy_burst")
+    parser.add_argument("--sleep", type=float, default=1.0, help="Seconds between runs")
+    parser.add_argument("--out", default=os.path.join(os.path.dirname(__file__), "..", "results", "checkpoint1_timing.csv"))
+    args = parser.parse_args()
+
+    out_path = os.path.abspath(args.out)
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    write_header = not os.path.exists(out_path)
+
+    conn = trino.dbapi.connect(host=HOST, port=PORT, user=USER, catalog=CATALOG)
+
+    with open(out_path, "a", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=CSV_FIELDS)
+        if write_header:
+            writer.writeheader()
+
+        for i in range(1, args.runs + 1):
+            result = run_once(conn, args.query_id)
+            run_id = f"{args.query_id}_{args.condition}_{i}_{int(time.time())}"
+            row = {
+                "run_id": run_id,
+                "query_id": args.query_id,
+                "condition": args.condition,
+                "run_index": i,
+                "cache_state": args.cache_state,
+                "ingestion_rate": args.ingestion_rate or args.condition,
+                **result,
+            }
+            writer.writerow(row)
+            f.flush()
+            status = "ERROR" if row["error"] else f"{row['runtime_ms']} ms, {row['rows_returned']} rows"
+            print(f"[{i}/{args.runs}] condition={args.condition} -> {status}")
+
+            if i < args.runs:
+                time.sleep(args.sleep)
+
+    print(f"\\nWrote results to {out_path}")
+
+
+if __name__ == "__main__":
+    main()
+`;
+
+})();
+</script>

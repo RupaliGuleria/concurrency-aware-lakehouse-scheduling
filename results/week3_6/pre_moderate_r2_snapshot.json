@@ -1,0 +1,14 @@
+{
+  "data/year=2026/month=08/day=22/hour=05/source=cloud": {
+    "bytes": 66251021,
+    "object_count": 66
+  },
+  "data/year=2026/month=08/day=22/hour=06/source=cloud": {
+    "bytes": 60907586,
+    "object_count": 59
+  },
+  "data/year=2026/month=08/day=22/hour=07/source=cloud": {
+    "bytes": 4619136,
+    "object_count": 5
+  }
+}
