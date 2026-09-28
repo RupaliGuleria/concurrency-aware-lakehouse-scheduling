@@ -1,7 +1,6 @@
 # Concurrency-Aware SLA Scheduling and Admission Control for Analytical Queries in a Data Lake
 
-Code, data, and paper source for the research described in the paper of the
-same name (Rupali Guleria). Preprint: *link goes here once posted.*
+Preprint: In Progress (To do )
 
 ## Abstract
 
