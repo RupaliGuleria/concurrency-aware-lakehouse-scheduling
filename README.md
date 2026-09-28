@@ -1,7 +1,7 @@
 # Concurrency-Aware SLA Scheduling and Admission Control for Analytical Queries in a Data Lake
 
 Code, data, and paper source for the research described in the paper of the
-same name (Rupali Guleria). Preprint: *arXiv link goes here once posted.*
+same name (Rupali Guleria). Preprint: *link goes here once posted.*
 
 ## Abstract
 
@@ -32,7 +32,7 @@ predicted target — discussed, not hidden.
 
 | Folder | What |
 |---|---|
-| `paper/ieee/` | IEEE-format LaTeX source of the paper (`main.tex`, `refs.bib`, `figures/`) — the same content submitted to arXiv. |
+| `paper/ieee/` | IEEE-format LaTeX source of the paper (`main.tex`, `refs.bib`, `figures/`) — the same content submitted as the preprint. |
 | `scripts/` | All analysis code: offline bootstrap simulation, live-validation harnesses, the multi-query schedulers (Adaptive Least Slack, static-margin baselines, DP), admission-control reconciliation, held-out prediction-error analysis, and figure generation. |
 | `results/` | Every experiment's raw output and write-up, in chronological order: `checkpoint1_*` and `week3*` are the falsification stage (four independent tests ruling out ingestion as the dominant factor — see Section 5 of the paper); `week4/` is the concurrency-aware scheduling and admission-control evaluation the paper reports (offline, held-out, and live). |
 | `infra/` | Docker Compose stack (Trino / MinIO / Hive Metastore / Postgres) used to run the live query engine. Credentials in this folder are placeholders — see below. |

@@ -23,9 +23,7 @@
 \author{
 \IEEEauthorblockN{Rupali Guleria}
 \IEEEauthorblockA{
-% TODO(Rupali): confirm affiliation line before arXiv upload -- email is set, affiliation below is still a default guess.
-Independent Researcher\\
-Email: guleriarupali27@gmail.com}
+Independent Researcher}
 }
 
 \maketitle
@@ -47,6 +45,15 @@ Query engines that serve interactive dashboards alongside heavier analytical wor
 This work is motivated by a specific question: does ingestion activity degrade query latency enough that a scheduler should explicitly account for it? If so, a scheduler that detects heavy ingestion could predict slower query execution and adjust its ordering accordingly. This is, on its face, a reasonable expectation -- ingestion and queries can compete for the same disks, network bandwidth, and compute -- and it was the premise underlying the initial design of this project.
 
 This hypothesis did not hold at the scale evaluated here. The dominant factor was instead one the initial design did not account for: the number of queries executing concurrently. This paper reports both findings -- the refutation of the ingestion hypothesis and the concurrency-aware scheduling and admission-control design that replaced it -- together with an evaluation spanning simulation, held-out validation, and live execution against a real Trino deployment.
+
+This paper investigates four research questions:
+
+\begin{itemize}
+\item \textbf{RQ1:} Does ingestion activity or query concurrency more strongly affect query latency in this deployment?
+\item \textbf{RQ2:} Does conditioning runtime prediction on concurrency materially change scheduling decisions?
+\item \textbf{RQ3:} How much benefit does globally-optimal (DP-based) ordering provide over greedy least-slack heuristics?
+\item \textbf{RQ4:} Can admission control, using predicted feasibility rather than ground truth, detect when further admission should be deferred to protect already-admitted queries' deadlines?
+\end{itemize}
 
 The contributions of this paper are:
 
@@ -179,12 +186,12 @@ One observation merits note for future work: the \texttt{long} (join) query clas
 
 \subsection{Concurrency Is the Dominant Driver}
 
-Testing concurrent query execution in isolation (no ingestion) produced a markedly different result: increasing load from one query at a time to sixteen concurrent queries slowed the same point-lookup query by a factor of 19 (mean 296\,ms to 5{,}717\,ms across the calibration rounds at each level), consistent with the single-node deployment described in Section~\ref{sec:setup} -- every concurrent query competes for the same limited execution slots, since no second node is available to distribute the load. Fig.~\ref{fig:concurrency-runtime} shows this effect across the full concurrency sweep and all three query classes.
+Testing concurrent query execution in isolation (no ingestion) produced a markedly different result: increasing load from one query at a time to sixteen concurrent queries slowed the same point-lookup query by a factor of 19 (mean 296\,ms to 5{,}717\,ms across the calibration rounds at each level), consistent with the single-node deployment described in Section~\ref{sec:setup} -- every concurrent query competes for the same limited execution slots, since no second node is available to distribute the load. Fig.~\ref{fig:concurrency-runtime} shows this effect across the full concurrency sweep and all three query classes, plotting per-cell \emph{medians} -- the same statistic the Adaptive scheduler's predictions use (Section~\ref{sec:background}) -- rather than the \emph{mean} quoted above; both indicate the same $\sim$19$\times$ effect.\footnote{Sample sizes are small at low concurrency ($n{=}4$ per cell in several cases) and uneven across classes: the sweep only cycles the \texttt{short} class at $C{=}1$, so the \texttt{medium} and \texttt{long} lines begin at $C{=}2$ and $C{=}4$ respectively.}
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{figures/fig_concurrency_runtime.pdf}
-\caption{Median runtime versus concurrent query count, by query class, from the calibration sweep (\texttt{results/week4/concurrency\_contention.csv}; shaded band: interquartile range). Lines are plotted from per-cell \emph{medians}, the same statistic the Adaptive scheduler's predictions use (Section~\ref{sec:background}); this differs slightly from the \emph{mean}-based single-query figure quoted in the text above, which both indicate the same $\sim$19$\times$ effect. Sample sizes are small at low concurrency ($n{=}4$ per cell in several cases) and uneven across classes -- the sweep only cycles the \texttt{short} class at $C{=}1$, so the \texttt{medium} and \texttt{long} lines begin at $C{=}2$ and $C{=}4$ respectively.}
+\caption{Median query runtime versus concurrency, by query class. Shading shows the interquartile range. Runtime increases sharply across all query classes as concurrency rises.}
 \label{fig:concurrency-runtime}
 \end{figure}
 
@@ -267,7 +274,7 @@ Two values in this design are declared policy choices rather than measurements, 
 
 \section{Discussion}
 
-Taken together, Sections~\ref{sec:ingestion} and~\ref{sec:results} support a specific practical recommendation: schedule intelligently while capacity exists, and detect -- rather than silently ignore -- the point at which it does not. Below saturation, concurrency-aware prediction materially changes scheduling decisions, and global DP-based scheduling provides additional opportunity to improve SLA adherence. Beyond a certain concurrency level, no ordering strategy helps, and the more defensible system response is admission control: informing some queries that they will execute later, rather than admitting all of them and allowing most to miss their deadlines.
+Taken together, Sections~\ref{sec:ingestion} and~\ref{sec:results} support a specific practical recommendation: schedule intelligently while capacity exists, and detect -- rather than silently ignore -- the point at which it does not. Below saturation, concurrency-aware prediction materially changes scheduling decisions, and global DP-based scheduling provides additional opportunity to improve SLA adherence. Beyond a certain concurrency level in our tested configuration, no evaluated ordering strategy preserved meaningful SLA adherence, and the more defensible system response is admission control: informing some queries that they will execute later, rather than admitting all of them and allowing most to miss their deadlines.
 
 This result also reframes what ``ingestion-aware'' scheduling should have meant for this project. It does not imply that ingestion contention is never relevant in any lakehouse deployment -- only that, at the scale and architecture evaluated here, it was not the bottleneck, and a scheduler built around the wrong bottleneck would not have improved outcomes. Testing this assumption explicitly, and revising the design once it failed, is itself a contribution of this work.
 
@@ -308,13 +315,13 @@ Given this, our claims are narrow: (1) an explicit, falsifiable test ruled out i
 
 \section{Conclusion}
 
-This work set out to test whether ingestion load is the dominant source of SLA risk in a lakehouse query engine and found, across four independent tests, that it is not. Query concurrency is the dominant factor: a single-node Trino deployment slows by a factor of 19 at sixteen concurrent queries relative to one, and this effect dominates scheduling decisions in a way ingestion did not. Reframing the scheduling problem around concurrency, we show that DP-based schedulers meaningfully outperform simple heuristics in aggregate, both in simulation and live against Trino, and that this ranking is stable under scoring against independently collected data. We further show that once concurrency exceeds a feasibility threshold, no scheduling policy can preserve SLA compliance, and that admission control -- recognizing this condition and deferring rather than over-promising -- is the more useful response: the admission-controlled scheduler's admitted-only adherence exceeded its blended adherence in every condition tested, live and simulated, and under live moderate-concurrency contention it deferred 82.5\% of incoming queries after its predicted feasibility test classified them as unsafe to admit.
+This work set out to test whether ingestion load is the dominant source of SLA risk in a lakehouse query engine and found, across four independent tests, that it is not. Query concurrency is the dominant factor: a single-node Trino deployment slows by a factor of 19 at sixteen concurrent queries relative to one, and this effect dominates scheduling decisions in a way ingestion did not. Reframing the scheduling problem around concurrency, we show that DP-based schedulers meaningfully outperform simple heuristics in aggregate, both in simulation and live against Trino, and that this ranking is stable under scoring against independently collected data. We further show that once concurrency exceeds a feasibility threshold, the workload becomes infeasible under the evaluated deadline model regardless of scheduling policy, and that admission control -- recognizing this condition and deferring rather than over-promising -- is the more useful response: the admission-controlled scheduler's admitted-only adherence exceeded its blended adherence in every condition tested, live and simulated, and under live moderate-concurrency contention it deferred 82.5\% of incoming queries after its predicted feasibility test classified them as unsafe to admit.
 
 We report this null effect of ingestion, at the scale and architecture tested here, as a rigorously tested finding in its own right -- not a universal claim that ingestion contention never matters -- and we state the limitations of this work explicitly: predictions are point estimates rather than distributions, concurrency is modeled at three coarse levels, and one live admission-control result fell short of what simulation predicted, for reasons not yet fully explained. We identify this last discrepancy as the most promising direction for follow-up work.
 
 \section*{Data and Code Availability}
 
-All results reported in this paper are derived from files in \texttt{results/week4/} and the accompanying analysis scripts in \texttt{scripts/}, within the project repository. Key result files include \texttt{results/week4/simulation\_report.md}, \texttt{results/week4/live\_concurrency\_validation\_report.md}, and \texttt{results/week4/admission\_control\_live\_reconciliation.md}; the full scheduler design rationale is documented in \texttt{research-plan/week4\_scheduler\_design.md}.
+Code, data, and paper source are available at \url{https://github.com/RupaliGuleria/concurrency-aware-lakehouse-scheduling}. All results reported in this paper are derived from files in that repository's \url{results/week4/} directory and the accompanying analysis scripts in \url{scripts/}. Key result files include \url{results/week4/simulation_report.md}, \url{results/week4/live_concurrency_validation_report.md}, \url{results/week4/admission_control_live_reconciliation.md}, and \url{results/week4/held_out_prediction_error.md} (Table~\ref{tab:prediction-error}); the scheduler design rationale is described in Section~\ref{sec:problem}.
 
 \bibliographystyle{IEEEtran}
 \bibliography{refs}
