@@ -260,9 +260,11 @@
 
   <p>The incoming data wasn't the bottleneck. Not here, not at this scale. A scheduler built around it would have solved the wrong problem.</p>
 
+  <h2>Someone has to decide who goes first</h2>
+  <p>Here's what the crowding actually means for the dashboard: a pile of queries &mdash; revenue by hour, stock by warehouse, whatever's being asked right now &mdash; all want to run at once, but the machine can only run a few well at a time. Something has to decide which ones go first, which wait, and which might not make it in time at all. That decision-maker is called a <strong>scheduler</strong>. Each query in this study also has a <strong>deadline</strong> &mdash; the time it's supposed to finish by for its answer to still be useful &mdash; and the scheduler's whole job is choosing an order that gets as many queries across their deadline as possible.</p>
+
   <h2>Teaching the scheduler to notice the crowd</h2>
-  <p>Every scheduler here answers one question: given each query's estimated runtime and deadline, which one should run next, and when should a new arrival simply wait?</p>
-  <p>The simplest rule, called <span class="term">least slack</span>, runs whichever query is closest to blowing its deadline first. The original version assumed the system was always idle &mdash; a best-case guess. The rebuilt version checks how busy the system actually is right now, the way a delivery app updates your ETA once it sees real traffic instead of assuming empty roads.</p>
+  <p>The simplest rule is called <span class="term">least slack</span>. Slack is how much spare time a query has left before its deadline, once you subtract how long it's expected to take &mdash; a query with little slack is close to running out of time and should go first. The original version of this rule always guessed how long a query would take assuming the system was idle, a best-case guess. The rebuilt version checks how busy the system actually is right now instead, the way a delivery app updates your ETA once it sees real traffic instead of assuming empty roads.</p>
   <p>That one change altered real decisions: the busy-aware version picked a different running order than the idle-assuming one in <strong>488 out of 1,000</strong> simulated batches. A second version goes further, using dynamic programming to compute the best possible order under those same estimates and the study's priority rules &mdash; not a rule of thumb, the provably best order given what it knows.</p>
 
   <h2>The bouncer at the door</h2>
