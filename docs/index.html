@@ -268,7 +268,7 @@
   <p>That one change altered real decisions: the busy-aware version picked a different running order than the idle-assuming one in <strong>488 out of 1,000</strong> simulated batches. A second version goes further, using dynamic programming to compute the best possible order under those same estimates and the study's priority rules &mdash; not a rule of thumb, the provably best order given what it knows.</p>
 
   <h2>The bouncer at the door</h2>
-  <p>Past a certain number of simultaneous queries, no amount of clever reordering helps. There simply isn't enough machine to go around, and every scheduler tested &mdash; including the mathematically optimal one &mdash; eventually hit <strong>0%</strong> success at high enough load. Shuffling the line doesn't help when the room is already full.</p>
+  <p>Once too many queries were running at the same time, changing the order stopped helping in these tests. There simply wasn't enough machine to go around. In simulation, every scheduler tried &mdash; even the one that finds the best possible order &mdash; finished <strong>0%</strong> of queries on time at the heaviest load. Shuffling the line doesn't help when the room is already full.</p>
   <p>The more useful response, the paper argues, isn't a smarter line. It's a door.</p>
   <blockquote>Before admitting a new query, check whether letting it in would still leave everything already admitted with a fair shot at its deadline. If not, that query waits &mdash; it isn't dropped, just run later, after the ones already let in.</blockquote>
   <p>This is the paper's admission control mechanism: a feasibility check at the door, not a smarter queue inside the room.</p>
@@ -288,8 +288,9 @@
     </div>
   </div>
 
-  <p>In every other live condition tested, admitted queries beat the blended average &mdash; including the deliberately deferred ones, scored honestly as ordinary misses once they finally ran last. This one case is reported plainly rather than smoothed over: the mechanism's confidence in itself didn't match reality here.</p>
-  <p>The likely cause: its predictions are built from measurements taken in short rounds, while this test ran under continuous background load &mdash; a denser kind of busy than the calibration data expected. A direct check of prediction error confirms it: at this exact condition, the error rate was roughly four times higher than everywhere else tested.</p>
+  <p>The check at the door still made a difference. Counting every query in that test, including the ones made to wait, only <strong>5.8%</strong> finished on time. Counting just the ones it let in, <strong>33.3%</strong> did. The same was true in every live test: the queries let in always did better than the overall average. Queries that were made to wait are still counted as misses &mdash; they aren't left out to make the numbers look better.</p>
+  <p>But 33.3% is still far below the 80% the system was aiming for. This is reported plainly, not smoothed over: the system was more confident than it should have been. Only 24 queries were let in during this test, so this one number should be read with some caution.</p>
+  <p>The likely reason: the system learned how long queries take from short test runs, but this test ran under steady, non-stop background load &mdash; a heavier kind of busy than it had learned from. A separate check supports this, though it doesn't fully prove it: at this level of busyness, the system's time estimates were typically off by about 31%, compared with about 7&ndash;8% at the other levels tested.</p>
 
   <h2>Why this matters past one dashboard</h2>
   <p>The specific numbers here come from one machine, one workload, three coarse levels of "how busy." They aren't a universal law. What travels further is the method: a popular assumption, tested directly before anything was built around it, and a result that overturned the premise the project started with.</p>
