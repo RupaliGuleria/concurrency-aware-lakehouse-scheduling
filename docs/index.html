@@ -197,6 +197,31 @@
     color: var(--ink);
   }
 
+  .specs {
+    margin: 24px 0 30px;
+    background: var(--bg-raised);
+    border: 1px solid var(--rule);
+    border-radius: 14px;
+    padding: 6px 20px;
+  }
+  .specs .row {
+    display: flex;
+    gap: 16px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .specs .row:last-child { border-bottom: 0; }
+  .specs dt {
+    flex: 0 0 132px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    padding-top: 2px;
+  }
+  .specs dd { margin: 0; flex: 1; min-width: 0; font-size: 15.5px; line-height: 1.5; }
+
   footer {
     margin-top: 72px;
     padding-top: 28px;
@@ -212,6 +237,8 @@
   @media (max-width: 480px) {
     .versus { flex-direction: column; }
     .versus .mult { order: 2; }
+    .specs .row { flex-direction: column; gap: 2px; }
+    .specs dt { flex-basis: auto; }
   }
 </style>
 </head>
@@ -291,6 +318,22 @@
   <p>The check at the door still made a difference. Counting every query in that test, including the ones made to wait, only <strong>5.8%</strong> finished on time. Counting just the ones it let in, <strong>33.3%</strong> did. The same was true in every live test: the queries let in always did better than the overall average. Queries that were made to wait are still counted as misses &mdash; they aren't left out to make the numbers look better.</p>
   <p>But 33.3% is still far below the 80% the system was aiming for. This is reported plainly, not smoothed over: the system was more confident than it should have been. Only 24 queries were let in during this test, so this one number should be read with some caution.</p>
   <p>The likely reason: the system learned how long queries take from short test runs, but this test ran under steady, non-stop background load &mdash; a heavier kind of busy than it had learned from. A separate check supports this, though it doesn't fully prove it: at this level of busyness, the system's time estimates were typically off by about 31%, compared with about 7&ndash;8% at the other levels tested.</p>
+
+  <h2>What it was tested on</h2>
+  <p>Every result here comes from <strong>one computer</strong> &mdash; not a cloud setup where many machines share the work. Here is the exact setup:</p>
+
+  <dl class="specs">
+    <div class="row"><dt>Computer</dt><dd>One desktop PC with an AMD Ryzen 7 3700X processor (8 cores, 16 threads)</dd></div>
+    <div class="row"><dt>Memory</dt><dd>32 GB in total. The test system was allowed to use 24 GB of it, and 12 of the 16 threads</dd></div>
+    <div class="row"><dt>Storage</dt><dd>SSD, with over 300 GB free</dd></div>
+    <div class="row"><dt>Software</dt><dd>Windows, with every part of the system running in Docker containers (under WSL2)</dd></div>
+    <div class="row"><dt>Query engine</dt><dd>Trino 455, running as a single node &mdash; one machine doing all the work, with 16 GB of memory set aside for it</dd></div>
+    <div class="row"><dt>Data storage</dt><dd>MinIO for the data files, plus a Hive metastore and Postgres to keep track of the tables &mdash; all on the same machine</dd></div>
+    <div class="row"><dt>Test data</dt><dd>TPC-H, a standard benchmark dataset, at a small size (about 600,000 rows in its largest table)</dd></div>
+  </dl>
+
+  <p>This matters for how far the results reach. On one machine, every query has to share the same processor and memory &mdash; there's nowhere else for the extra work to go. That is a big part of why 16 queries at once made things 19&times; slower.</p>
+  <p>A distributed system, where many machines split the work between them, could behave differently. The slowdown might be smaller, and the point where reordering stops helping might come later. This study did not test that. So read these findings as true for this one setup, not as proof of how a large cluster would behave.</p>
 
   <h2>Why this matters past one dashboard</h2>
   <p>The specific numbers here come from one machine, one workload, three coarse levels of "how busy." They aren't a universal law. What travels further is the method: a popular assumption, tested directly before anything was built around it, and a result that overturned the premise the project started with.</p>
