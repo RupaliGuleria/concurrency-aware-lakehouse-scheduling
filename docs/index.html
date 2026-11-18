@@ -6,8 +6,8 @@
 <title>Dashboard Rush Hour</title>
 <meta name="description" content="Concurrency-aware SLA scheduling and admission control for analytical queries in a data lake — a plain-language explainer by Rupali Guleria.">
 <meta name="author" content="Rupali Guleria">
-<meta property="og:title" content="It's not the data flood. It's the crowd.">
-<meta property="og:description" content="Why business dashboards slow down at the worst moment — and what actually fixes it. A lakehouse scheduling study on Trino.">
+<meta property="og:title" content="Why the same query took 19x longer under load">
+<meta property="og:description" content="A single-node Trino experiment on query scheduling and admission control — what helped, and where it fell short.">
 <meta property="og:type" content="article">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -106,10 +106,24 @@
     color: var(--ink-soft);
     padding-top: 22px;
     border-top: 1px solid var(--rule);
-    margin-bottom: 48px;
+    margin-bottom: 24px;
   }
   .byline strong { color: var(--ink); font-weight: 600; }
   .byline .dot { opacity: 0.5; }
+
+  .cta-row { display: flex; gap: 10px; flex-wrap: wrap; margin: 0 0 40px; }
+  .cta-row a {
+    font-family: var(--mono);
+    font-size: 13px;
+    text-decoration: none;
+    padding: 9px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--rule);
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  .cta-row a.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .cta-row a:hover { border-color: var(--accent); }
 
   h2 {
     font-family: var(--display);
@@ -203,38 +217,17 @@
 </head>
 <body>
 <main>
-  <p class="eyebrow">A lakehouse scheduling study</p>
-  <h1>It's not the data flood. It's the crowd.</h1>
-  <p class="dek">Testing one widely held assumption about why business dashboards slow down at the worst possible moment &mdash; and what actually fixes it.</p>
+  <h1>Why the same query took 19&times; longer under load</h1>
+  <p class="dek">A single-node Trino experiment on query scheduling and admission control &mdash; what helped, and where it fell short.</p>
   <div class="byline"><strong>Rupali Guleria</strong><span class="dot">&middot;</span><span>Independent Researcher</span></div>
-
-  <p class="lead">Picture a retail company on its biggest sale day of the year. Orders are pouring in. Somewhere in another tab, an operations lead is watching a live dashboard &mdash; revenue by hour, stock levels, which warehouse is falling behind &mdash; and it keeps stalling. Everyone in the room reaches the same conclusion without discussing it: <em>it's slow because so much new data is coming in right now.</em></p>
-
-  <p>That assumption is reasonable. It's also, for one real system tested here, wrong.</p>
-
-  <h2>The assumption everyone makes</h2>
-  <p>Modern analytics systems increasingly use a "lakehouse" architecture &mdash; a setup where the computing engine that answers your questions and the storage holding your data are two separate systems, connected over a network, often sharing the same cluster with whatever process is busy writing new data in. Trino is one of the most widely used engines of this kind; it's the query layer behind analytics at companies handling exactly this mix of constant writes and constant questions.</p>
-  <p>The natural first fix, when that dashboard crawls, is to build a scheduler that watches how much new data is streaming in and reorders queries around it &mdash; run the quick ones first when ingestion is heavy, hold the expensive ones for a quieter moment. It's what this project set out to build, too.</p>
-
-  <h2>Testing it, four separate ways</h2>
-  <p>Before building that scheduler, the assumption underneath it got tested directly: does a flood of incoming data actually slow queries down enough to matter? A real Trino deployment was run with a standard analytical workload &mdash; point lookups, aggregations, joins, the kind of questions a business dashboard actually asks &mdash; while a separate stream of synthetic transaction data was fed in at varying intensity, from none to heavy and sustained.</p>
-  <p>Four independent tests, run at different stages of the project using different methods, landed on the same answer.</p>
-
-  <div class="stat-row">
-    <div class="stat warn">
-      <div class="num">2&ndash;21ms</div>
-      <div class="label">how much query time shifted under heavy incoming data &mdash; inside ordinary measurement noise</div>
-    </div>
-    <div class="stat warn">
-      <div class="num">0 / 1,000</div>
-      <div class="label">simulated batches where knowing the ingestion level changed the scheduling decision at all</div>
-    </div>
+  <div class="cta-row">
+    <a class="primary" href="https://doi.org/10.5281/zenodo.23808690" target="_blank" rel="noopener">Read the preprint</a>
+    <a href="https://github.com/RupaliGuleria/concurrency-aware-lakehouse-scheduling" target="_blank" rel="noopener">View code and data</a>
   </div>
 
-  <p>The data flood wasn't the bottleneck. Not in this setup, not at this scale. A scheduler built around it would have been solving the wrong problem.</p>
+  <p class="lead">Picture a retail company on its biggest sale day of the year. Orders are pouring in, and a live dashboard keeps stalling. The usual explanation: too much new data coming in at once.</p>
 
-  <h2>What was actually happening</h2>
-  <p>The thing that did move the needle was simpler and easy to miss: how many queries were running at the same moment. Not what they were doing &mdash; just how many of them, at once, competing for the same fixed pool of CPU and I/O.</p>
+  <p>That explanation is reasonable. It's also, for one real system tested here, wrong.</p>
 
   <div class="versus">
     <div class="side">
@@ -248,11 +241,29 @@
     </div>
   </div>
 
-  <p>Same query. Same question asked of the same data. The only thing that changed was how many other people were asking their own questions at the same instant &mdash; which is exactly what a sale-day dashboard looks like: everyone refreshing together, not one big delivery of new data arriving at once.</p>
+  <p>Same query, same data, same machine. The only thing that changed was how many other queries were running at the same moment &mdash; which is exactly what a sale-day dashboard looks like: everyone refreshing together, not one big delivery of new data arriving at once.</p>
+
+  <h2>But isn't it the incoming data?</h2>
+  <p>Trino is the kind of engine behind that dashboard: it answers questions over data stored separately from the engine itself, often while new data is still being written in. The obvious fix for a slow dashboard is a scheduler that watches how much data is coming in and reorders queries around it. That was the starting plan for this project too &mdash; until it got tested.</p>
+  <p>A real Trino deployment ran the same kind of queries a dashboard asks &mdash; lookups, totals, joins &mdash; while a separate stream of data was fed in at different speeds, from none to heavy. Four separate tests, run at different points in the project, all landed on the same answer.</p>
+
+  <div class="stat-row">
+    <div class="stat warn">
+      <div class="num">2&ndash;21ms</div>
+      <div class="label">how much query time shifted under heavy incoming data &mdash; inside ordinary measurement noise</div>
+    </div>
+    <div class="stat warn">
+      <div class="num">0 / 1,000</div>
+      <div class="label">simulated batches where the incoming-data level changed the scheduling decision at all</div>
+    </div>
+  </div>
+
+  <p>The incoming data wasn't the bottleneck. Not here, not at this scale. A scheduler built around it would have solved the wrong problem.</p>
 
   <h2>Teaching the scheduler to notice the crowd</h2>
-  <p>With the real driver identified, the scheduler got rebuilt around it. The core idea is a rule called <span class="term">least slack</span>: of everything waiting to run, do the one closest to blowing its deadline first. The original version of this rule always assumed the system was idle &mdash; a best-case guess. The rebuilt version checks how busy the system actually is right now and adjusts its time estimate accordingly, the way a delivery app updates your ETA once it sees real traffic instead of assuming empty roads.</p>
-  <p>That adjustment alone changed real decisions: in simulation, the busy-aware version picked a different running order than the idle-assuming one in <strong>488 out of 1,000</strong> batches. A second version went further, using an exact optimization method (dynamic programming) to compute the mathematically best possible order for a batch, rather than a solid rule of thumb &mdash; useful for measuring exactly how much room a smarter algorithm actually has to improve on the simple heuristic.</p>
+  <p>Every scheduler here answers one question: given each query's estimated runtime and deadline, which one should run next, and when should a new arrival simply wait?</p>
+  <p>The simplest rule, called <span class="term">least slack</span>, runs whichever query is closest to blowing its deadline first. The original version assumed the system was always idle &mdash; a best-case guess. The rebuilt version checks how busy the system actually is right now, the way a delivery app updates your ETA once it sees real traffic instead of assuming empty roads.</p>
+  <p>That one change altered real decisions: the busy-aware version picked a different running order than the idle-assuming one in <strong>488 out of 1,000</strong> simulated batches. A second version goes further, using dynamic programming to compute the best possible order under those same estimates and the study's priority rules &mdash; not a rule of thumb, the provably best order given what it knows.</p>
 
   <h2>The bouncer at the door</h2>
   <p>Past a certain number of simultaneous queries, no amount of clever reordering helps. There simply isn't enough machine to go around, and every scheduler tested &mdash; including the mathematically optimal one &mdash; eventually hit <strong>0%</strong> success at high enough load. Shuffling the line doesn't help when the room is already full.</p>
@@ -260,25 +271,23 @@
   <blockquote>Before admitting a new query, check whether letting it in would still leave everything already admitted with a fair shot at its deadline. If not, that query waits &mdash; it isn't dropped, just run later, after the ones already let in.</blockquote>
   <p>This is the paper's admission control mechanism: a feasibility check at the door, not a smarter queue inside the room.</p>
 
-  <h2>Tested live, not just on paper</h2>
-  <p>A simulation proving this works is one kind of evidence. The stronger kind is watching it hold up against a real, running system under real concurrent load &mdash; which is what happened next.</p>
+  <h2>Tested live &mdash; and where it fell short</h2>
+  <p>A simulation proving this works is one kind of evidence. The stronger kind is watching it hold up against a real, running system under real concurrent load.</p>
+  <p>In the moderate-concurrency live test &mdash; the busiest condition actually run live, rather than only simulated &mdash; the admission system recognized it was overloaded and deferred most new arrivals. But even among the queries it let through, success fell well short of its own target:</p>
 
   <div class="stat-row">
     <div class="stat calm">
       <div class="num">82.5%</div>
-      <div class="label">of arriving queries deferred, live, once the system judged itself overloaded under heavy real concurrency</div>
+      <div class="label">of arrivals deferred, live, once the system judged itself overloaded (moderate-concurrency test)</div>
     </div>
-    <div class="stat calm">
-      <div class="num">0 of 5</div>
-      <div class="label">live conditions where admitted queries did <em>worse</em> than the unfiltered average</div>
+    <div class="stat warn">
+      <div class="num">33.3%</div>
+      <div class="label">success rate among the queries it still let in &mdash; same test, versus an 80% target</div>
     </div>
   </div>
 
-  <p>In every live condition tested, the queries that got let in met their deadlines more often than the blended average would have suggested &mdash; including the deliberately deferred ones scored honestly, as ordinary misses, once they finally ran last.</p>
-
-  <h2>Where it fell short</h2>
-  <p>One result is reported without softening it. Under the single heaviest live condition tested, the admitted queries' success rate landed at <strong>33.3%</strong>, well under the system's own 80% target &mdash; the one case where the mechanism's confidence in itself didn't match reality.</p>
-  <p>The paper traces why: its feasibility predictions are built from measurements taken in short, discrete rounds, while this live test ran under continuous background load &mdash; a denser, steadier kind of busy than the calibration data expected. A direct measurement of prediction error confirms it: at that exact condition, the predictor's error rate was roughly four times higher than everywhere else it was tested. The gap is real, it's measured, and it's reported rather than quietly dropped from the results.</p>
+  <p>In every other live condition tested, admitted queries beat the blended average &mdash; including the deliberately deferred ones, scored honestly as ordinary misses once they finally ran last. This one case is reported plainly rather than smoothed over: the mechanism's confidence in itself didn't match reality here.</p>
+  <p>The likely cause: its predictions are built from measurements taken in short rounds, while this test ran under continuous background load &mdash; a denser kind of busy than the calibration data expected. A direct check of prediction error confirms it: at this exact condition, the error rate was roughly four times higher than everywhere else tested.</p>
 
   <h2>Why this matters past one dashboard</h2>
   <p>The specific numbers here come from one machine, one workload, three coarse levels of "how busy." They aren't a universal law. What travels further is the method: a popular assumption, tested directly before anything was built around it, and a result that overturned the premise the project started with.</p>
