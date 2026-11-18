@@ -9,6 +9,12 @@
 <meta property="og:title" content="Why the same query took 19x longer under load">
 <meta property="og:description" content="A single-node Trino experiment on query scheduling and admission control — what helped, and where it fell short.">
 <meta property="og:type" content="article">
+<meta property="og:url" content="https://rupaliguleria.github.io/concurrency-aware-lakehouse-scheduling/">
+<meta property="og:image" content="https://rupaliguleria.github.io/concurrency-aware-lakehouse-scheduling/images/same-query-19x-under-load.jpg">
+<meta property="og:image:width" content="1536">
+<meta property="og:image:height" content="1024">
+<meta property="og:image:alt" content="The same query took 296 ms alone and 5,717 ms with 16 queries running at once — about 19 times longer.">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Source+Sans+3:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
@@ -124,6 +130,15 @@
   }
   .cta-row a.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
   .cta-row a:hover { border-color: var(--accent); }
+
+  .hero { margin: 0 0 36px; }
+  .hero img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 14px;
+    border: 1px solid var(--rule);
+  }
 
   h2 {
     font-family: var(--display);
@@ -251,6 +266,10 @@
     <a class="primary" href="https://doi.org/10.5281/zenodo.23808690" target="_blank" rel="noopener">Read the preprint</a>
     <a href="https://github.com/RupaliGuleria/concurrency-aware-lakehouse-scheduling" target="_blank" rel="noopener">View code and data</a>
   </div>
+
+  <figure class="hero">
+    <img src="images/same-query-19x-under-load.jpg" width="1536" height="1024" alt="Illustration comparing the same query on Trino: 296 ms when it runs alone, and 5,717 ms when 16 queries run at the same time — about 19 times longer. Single-node test, same data, same machine.">
+  </figure>
 
   <p class="lead">Picture a retail company on its biggest sale day of the year. Orders are pouring in, and a live dashboard keeps stalling. The usual explanation: too much new data coming in at once.</p>
 
