@@ -1,6 +1,6 @@
 # Concurrency-Aware SLA Scheduling and Admission Control for Analytical Queries in a Data Lake
 
-Preprint: In Progress (To do )
+Preprint: https://zenodo.org/records/23808690
 
 ## Abstract
 
