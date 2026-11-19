@@ -290,8 +290,9 @@
   <p>Same query, same data, same machine. The only thing that changed was how many other queries were running at the same moment &mdash; which is exactly what a sale-day dashboard looks like: everyone refreshing together, not one big delivery of new data arriving at once.</p>
 
   <h2>But isn't it the incoming data?</h2>
-  <p>Trino is the kind of engine behind that dashboard: it answers questions over data stored separately from the engine itself, often while new data is still being written in. The obvious fix for a slow dashboard is a scheduler that watches how much data is coming in and reorders queries around it. That was the starting plan for this project too &mdash; until it got tested.</p>
-  <p>A real Trino deployment ran the same kind of queries a dashboard asks &mdash; lookups, totals, joins &mdash; while a separate stream of data was fed in at different speeds, from none to heavy. Four separate tests, run at different points in the project, all landed on the same answer.</p>
+  <p>The dashboard is just an example. Behind any dashboard like it sits a <em>query engine</em> &mdash; the software that actually runs each question against the stored data. This study used one called Trino. In setups like this, the data is kept in separate storage, and new data is often still being written in while questions are being answered.</p>
+  <p>So when things slow down, the obvious suspect is all that incoming data. The natural fix would be a scheduler that watches how much new data is arriving and reorders queries around it. That was the starting plan for this project too &mdash; until the idea was tested.</p>
+  <p>No real dashboard was involved. Instead, a test version of this setup was built on one computer. Trino ran the same kinds of questions a dashboard would send &mdash; looking up a record, adding up totals, combining two tables &mdash; over TPC-H, a standard dataset made for testing databases. At the same time, banking transactions from a public Kaggle dataset were streamed in at different speeds, from none to heavy. Four separate tests, run at different points in the project, all landed on the same answer.</p>
 
   <div class="stat-row">
     <div class="stat warn">
@@ -348,7 +349,8 @@
     <div class="row"><dt>Software</dt><dd>Windows, with every part of the system running in Docker containers (under WSL2)</dd></div>
     <div class="row"><dt>Query engine</dt><dd>Trino 455, running as a single node &mdash; one machine doing all the work, with 16 GB of memory set aside for it</dd></div>
     <div class="row"><dt>Data storage</dt><dd>MinIO for the data files, plus a Hive metastore and Postgres to keep track of the tables &mdash; all on the same machine</dd></div>
-    <div class="row"><dt>Test data</dt><dd>TPC-H, a standard benchmark dataset, at a small size (about 600,000 rows in its largest table)</dd></div>
+    <div class="row"><dt>Query data</dt><dd>TPC-H, a standard benchmark dataset, at a small size (about 600,000 rows in its largest table)</dd></div>
+    <div class="row"><dt>Incoming data</dt><dd>The &ldquo;Indian Banking Transactions 2019&ndash;2024&rdquo; dataset from Kaggle, streamed in as new data while queries ran</dd></div>
   </dl>
 
   <p>This matters for how far the results reach. On one machine, every query has to share the same processor and memory &mdash; there's nowhere else for the extra work to go. That is a big part of why 16 queries at once made things 19&times; slower.</p>
